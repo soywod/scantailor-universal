@@ -59,6 +59,7 @@
 #include "FixDpiDialog.h"
 #include "LoadFilesStatusDialog.h"
 #include "SettingsDialog.h"
+#include "RestorationLabDialog.h"
 #include "AbstractRelinker.h"
 #include "RelinkingDialog.h"
 #include "OutOfMemoryHandler.h"
@@ -296,6 +297,7 @@ MainWindow::MainWindow()
     connect(actionFixDpi, SIGNAL(triggered(bool)), SLOT(fixDpiDialogRequested()));
     connect(actionRelinking, SIGNAL(triggered(bool)), SLOT(showRelinkingDialog()));
     connect(actionSettings, SIGNAL(triggered(bool)), SLOT(openSettingsDialog()));
+    connect(actionRestorationLab, SIGNAL(triggered(bool)), SLOT(openRestorationLabDialog()));
 //begin of modified by monday2000
 //Export_Subscans
 //added:
@@ -1955,6 +1957,14 @@ MainWindow::openSettingsDialog()
     dialog->setWindowModality(Qt::WindowModal);
     connect(dialog, SIGNAL(settingsChanged()), this, SLOT(settingsChanged()));
     dialog->exec();
+}
+
+void
+MainWindow::openRestorationLabDialog()
+{
+    RestorationLabDialog dialog(this);
+    dialog.setWindowModality(Qt::WindowModal);
+    dialog.exec();
 }
 
 //begin of modified by monday2000

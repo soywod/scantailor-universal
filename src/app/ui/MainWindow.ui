@@ -68,6 +68,8 @@
     <addaction name="actionRelinking"/>
     <addaction name="actionExport"/>
     <addaction name="separator"/>
+    <addaction name="actionRestorationLab"/>
+    <addaction name="separator"/>
     <addaction name="actionSettings"/>
    </widget>
    <widget class="QMenu" name="menuFile">
@@ -634,6 +636,14 @@
    </property>
    <property name="shortcut">
     <string>Ctrl+Q</string>
+   </property>
+  </action>
+  <action name="actionRestorationLab">
+   <property name="text">
+    <string>Restoration &amp;Lab (V1 alpha)...</string>
+   </property>
+   <property name="shortcut">
+    <string notr="true"/>
    </property>
   </action>
   <action name="actionSettings">

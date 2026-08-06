@@ -1,6 +1,7 @@
 name: windows 2022 Qt6
 
 on:
+  workflow_dispatch: {}
   push:
     branches:
       - master
@@ -55,4 +56,37 @@ jobs:
           CMAKE_BUILD_TYPE: Release
         run: .build\test.ps1 -ReleaseType "${{ env.CMAKE_BUILD_TYPE }}"
         shell: powershell
+      - name: Package portable x64 build
+        env:
+          CMAKE_BUILD_TYPE: Release
+          QT_ROOT_DIR: '${{ github.workspace }}\Qt\6.9.0\msvc2022_64'
+          VCPKG_TARGET_TRIPLET: 'x64-windows-dynamic-boost-static'
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $pkg = New-Item -ItemType Directory -Force -Path package
+          $gui = Get-ChildItem -Recurse build -Filter scantailor-universal.exe | Select-Object -First 1
+          if (-not $gui) { throw "scantailor-universal.exe not found under build\" }
+          $cli = Get-ChildItem -Recurse build -Filter scantailor-universal-cli.exe | Select-Object -First 1
+          Copy-Item $gui.FullName $pkg
+          if ($cli) { Copy-Item $cli.FullName $pkg }
+          # Qt runtime, platform/imageformat/style plugins
+          & "$env:QT_ROOT_DIR\bin\windeployqt.exe" --release --no-translations "$pkg\scantailor-universal.exe"
+          if ($LastExitCode -ne 0) { throw "windeployqt exited with code $LastExitCode" }
+          # Third-party runtime DLLs from vcpkg (zlib, tiff, png, jpeg, exiv2, openjpeg, mupdf, ...)
+          $vcpkgBin = "C:\vcpkg\installed\$env:VCPKG_TARGET_TRIPLET\bin"
+          if (Test-Path $vcpkgBin) { Copy-Item "$vcpkgBin\*.dll" $pkg -Force }
+          # Data the app looks up next to the executable (see TRANSLATIONS_DIR_REL / STYLESHEETS_DIR_REL)
+          $qm = Get-ChildItem -Recurse build -Filter *.qm
+          if ($qm) {
+            $null = New-Item -ItemType Directory -Force -Path "$pkg\translations"
+            $qm | ForEach-Object { Copy-Item $_.FullName "$pkg\translations" }
+          }
+          Copy-Item src\stylesheets "$pkg\stylesheets" -Recurse -Exclude CMakeLists.txt
+          Copy-Item LICENSE,README.md $pkg
+          Copy-Item docs "$pkg\docs" -Recurse
+        shell: powershell
+      - uses: actions/upload-artifact@v4
+        with:
+          name: scantailor-universal-windows-x64-Qt6
+          path: package
 

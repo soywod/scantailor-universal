@@ -221,6 +221,8 @@ private slots:
 
     void openSettingsDialog();
 
+    void openRestorationLabDialog();
+
     void showAboutDialog();
 
     void openExportDialog();
