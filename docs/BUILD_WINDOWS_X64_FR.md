@@ -30,6 +30,11 @@ Prérequis : Visual Studio 2022 (charge de travail C++), CMake, vcpkg, et Qt 6
 MSVC 2022 x64.
 
 ```powershell
+# Aligner vcpkg sur le commit épinglé par la CI (voir « Épinglage de vcpkg »)
+git -C C:\vcpkg fetch --depth 1 origin f1d4bbc72f183441403ba5107cb19d75a5abc2a2
+git -C C:\vcpkg checkout --force FETCH_HEAD
+C:\vcpkg\bootstrap-vcpkg.bat -disableMetrics
+
 # Dépendances, avec les triplets fournis dans .build\st-vcpkg-triplets
 $env:VCPKG_BUILD_TYPE = "Release"
 C:\vcpkg\vcpkg install zlib tiff libpng openjpeg libjpeg-turbo exiv2 opengl `
@@ -62,6 +67,32 @@ $env:VCPKG_TARGET_TRIPLET = "x64-windows-dynamic-boost-static"
 `windeployqt` dessus pour copier les DLL Qt, et recopier `src\stylesheets` et
 les fichiers `.qm` à côté de l’exécutable (c’est ce que fait l’étape
 « Package portable x64 build » du workflow).
+
+## Épinglage de vcpkg
+
+Les deux workflows Windows épinglent l’arbre de ports de `C:\vcpkg` sur le
+commit `f1d4bbc72f183441403ba5107cb19d75a5abc2a2` (microsoft/vcpkg,
+2026-08-04) avant le bootstrap.
+
+Raison : Codeberg a ré-empaqueté l’archive `gumbo-parser 0.13.2` sans changer
+le numéro de version, ce qui invalide le SHA512 figé dans le port. Toute image
+de runner dont le vcpkg est antérieur au 2026-08-04 échoue avec :
+
+```
+error: download from https://codeberg.org/gumbo-parser/gumbo-parser/archive/0.13.2.tar.gz had an unexpected hash
+error: building gumbo:x64-windows failed with: BUILD_FAILED
+```
+
+`gumbo` est tiré par `libmupdf` (lecture des PDF en entrée). Le commit épinglé
+contient le correctif amont (`[gumbo] update Codeberg archive SHA512
+(port-version 1)`, port-version 1).
+
+Si Codeberg ré-empaquète à nouveau l’archive, le symptôme reviendra : relever
+alors le commit `VCPKG_COMMIT` dans les deux workflows vers un commit vcpkg
+plus récent contenant le hash rafraîchi.
+
+En dernier recours, `-DENABLE_MUPDF=off` supprime la dépendance à
+`libmupdf`/`gumbo`, au prix de la lecture des PDF comme source d’images.
 
 ## Note sur le standard C++
 

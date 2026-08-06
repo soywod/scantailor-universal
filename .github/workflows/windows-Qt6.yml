@@ -28,8 +28,19 @@ jobs:
       - name: build deps
         env:
           VCPKG_BUILD_TYPE: Release
+          # The runner image ships a vcpkg checkout of unspecified age. Pin the ports tree so
+          # dependency versions are reproducible, and so we are past microsoft/vcpkg f1d4bbc
+          # (2026-08-04), which refreshed the gumbo 0.13.2 SHA512 after Codeberg re-packed the
+          # tag. On an older tree `vcpkg install gumbo` dies with "unexpected hash".
+          VCPKG_COMMIT: 'f1d4bbc72f183441403ba5107cb19d75a5abc2a2'
         run: |
+          git config --global --add safe.directory C:/vcpkg
+          git -C C:\vcpkg fetch --depth 1 origin $env:VCPKG_COMMIT
+          if ($LastExitCode -ne 0) { throw "vcpkg fetch failed with code $LastExitCode" }
+          git -C C:\vcpkg checkout --force FETCH_HEAD
+          if ($LastExitCode -ne 0) { throw "vcpkg checkout failed with code $LastExitCode" }
           C:\vcpkg\bootstrap-vcpkg.bat -disableMetrics
+          if ($LastExitCode -ne 0) { throw "bootstrap-vcpkg failed with code $LastExitCode" }
           C:\vcpkg\vcpkg install zlib tiff libpng openjpeg libjpeg-turbo exiv2 opengl pkgconf libmupdf mujs harfbuzz[freetype] gumbo freetype jbig2dec --overlay-triplets "${{ github.workspace }}\.build\st-vcpkg-triplets" --triplet x64-windows-dynamic-boost-static
       - name: Install boost
         env:
