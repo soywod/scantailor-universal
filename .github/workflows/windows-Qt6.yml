@@ -53,8 +53,9 @@ jobs:
           # must be passed in cmd line
           CMAKE_BUILD_TYPE: Release
           CMAKE_BUILD_PARALLEL_LEVEL: 8
-          QT_ROOT_DIR: '${{ github.workspace }}\Qt\6.9.0\msvc2022_64\'
-          CMAKE_PREFIX_PATH: '${{ github.workspace }}\Qt\6.9.0\msvc2022_64\'
+          # QT_ROOT_DIR is exported by install-qt-action; do not hardcode it. The action
+          # installs under RUNNER_WORKSPACE, which is the *parent* of github.workspace.
+          CMAKE_PREFIX_PATH: '${{ env.QT_ROOT_DIR }}'
           CMAKE_TOOLCHAIN_FILE: 'C:\vcpkg\scripts\buildsystems\vcpkg.cmake'
           VCPKG_OVERLAY_TRIPLETS: '${{ github.workspace }}\.build\st-vcpkg-triplets' # https://github.com/microsoft/vcpkg/discussions/33256#discussioncomment-6761851
           VCPKG_TARGET_TRIPLET: 'x64-windows-dynamic-boost-static'
@@ -66,7 +67,6 @@ jobs:
       - name: Package portable x64 build
         env:
           CMAKE_BUILD_TYPE: Release
-          QT_ROOT_DIR: '${{ github.workspace }}\Qt\6.9.0\msvc2022_64'
           VCPKG_TARGET_TRIPLET: 'x64-windows-dynamic-boost-static'
         run: |
           $ErrorActionPreference = 'Stop'
@@ -77,7 +77,13 @@ jobs:
           Copy-Item $gui.FullName $pkg
           if ($cli) { Copy-Item $cli.FullName $pkg }
           # Qt runtime, platform/imageformat/style plugins
-          & "$env:QT_ROOT_DIR\bin\windeployqt.exe" --release --no-translations "$pkg\scantailor-universal.exe"
+          $windeployqt = Join-Path $env:QT_ROOT_DIR 'bin\windeployqt.exe'
+          if (-not (Test-Path $windeployqt)) {
+            $onPath = Get-Command windeployqt.exe -ErrorAction SilentlyContinue
+            if (-not $onPath) { throw "windeployqt.exe not found (QT_ROOT_DIR=$env:QT_ROOT_DIR)" }
+            $windeployqt = $onPath.Source
+          }
+          & $windeployqt --release --no-translations "$pkg\scantailor-universal.exe"
           if ($LastExitCode -ne 0) { throw "windeployqt exited with code $LastExitCode" }
           # Third-party runtime DLLs from vcpkg (zlib, tiff, png, jpeg, exiv2, openjpeg, mupdf, ...)
           $vcpkgBin = "C:\vcpkg\installed\$env:VCPKG_TARGET_TRIPLET\bin"
